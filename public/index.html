@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SaveMedia — Download Videos from YouTube, Instagram & Pinterest</title>
+    <meta name="description" content="Download videos from YouTube, Instagram, and Pinterest easily, fast, and securely.">
+    <!-- Favicon emoji via SVG data URI -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            cyan: '#06b6d4',
+                            purple: '#8b5cf6',
+                            green: '#10b981',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="text-slate-200 min-h-screen flex flex-col font-sans overflow-x-hidden bg-primary relative">
+    
+    <!-- Background Animated Gradient -->
+    <div class="fixed inset-0 z-[-1] bg-gradient-radial from-[#1a1a3a] to-[#0a0a1a] opacity-80"></div>
+    <div class="fixed inset-0 z-[-1] animated-bg"></div>
+
+    <!-- 1. Navigation Bar -->
+    <nav class="sticky top-0 z-50 glass backdrop-blur-xl bg-white/5 border-b border-white/10 px-6 py-4">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <a href="/" class="flex items-center gap-2 group">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-brand-cyan group-hover:text-brand-purple transition-colors duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                <span class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-cyan to-brand-purple">SaveMedia</span>
+            </a>
+            <div class="hidden md:flex gap-6 text-sm font-medium text-slate-300">
+                <a href="#how-it-works" class="hover:text-white transition-colors">How it Works</a>
+                <a href="#features" class="hover:text-white transition-colors">Features</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow flex flex-col items-center w-full px-4 sm:px-6">
+        
+        <!-- 2. Hero Section -->
+        <section class="w-full max-w-4xl mx-auto text-center mt-20 mb-16">
+            <h1 class="text-4xl md:text-6xl font-bold mb-6 tracking-tight">
+                Download Videos from <br class="md:hidden" />
+                <span id="platform-cycle-text" class="inline-block min-w-[220px] text-left platform-cycle">YouTube</span>
+            </h1>
+            <p class="text-lg md:text-xl text-slate-400 mb-6 max-w-2xl mx-auto">
+                Paste any video link and download in seconds. Free, fast, no registration.
+            </p>
+            <div class="flex flex-wrap items-center justify-center gap-2 mb-10 max-w-3xl mx-auto">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29.01 29.01 0 0 0 1 11.75a29.01 29.01 0 0 0 .46 5.33 2.78 2.78 0 0 0 1.94 2c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29.01 29.01 0 0 0 .46-5.33 29.01 29.01 0 0 0-.46-5.33zM9.75 15.02V8.48L15.5 11.75l-5.75 3.27z"/></svg>
+                    YouTube
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-pink-500/10 text-pink-400 border border-pink-500/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+                    Instagram
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-red-600/10 text-red-500 border border-red-600/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 5.079 3.158 9.417 7.618 11.162-.105-.949-.199-2.403.041-3.439.219-.937 1.406-5.957 1.406-5.957s-.359-.72-.359-1.781c0-1.663.967-2.911 2.168-2.911 1.024 0 1.518.769 1.518 1.688 0 1.029-.653 2.567-.992 3.992-.285 1.193.6 2.165 1.775 2.165 2.128 0 3.768-2.245 3.768-5.487 0-2.861-2.063-4.869-5.008-4.869-3.41 0-5.409 2.562-5.409 5.199 0 1.033.394 2.143.889 2.741.099.12.112.225.085.345-.09.375-.293 1.199-.334 1.363-.053.225-.172.271-.401.165-1.495-.69-2.433-2.878-2.433-4.646 0-3.776 2.748-7.252 7.951-7.252 4.168 0 7.392 2.967 7.392 6.923 0 4.135-2.607 7.462-6.233 7.462-1.214 0-2.354-.629-2.758-1.379l-.749 2.848c-.269 1.045-1.004 2.352-1.498 3.146 1.123.345 2.306.535 3.55.535 6.607 0 11.985-5.365 11.985-11.987C23.97 5.367 18.592 0 12.017 0z"/></svg>
+                    Pinterest
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                    X / Twitter
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-blue-600/10 text-blue-400 border border-blue-600/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                    Facebook
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-300 border border-blue-500/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.239-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+                    LinkedIn
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 3.05 15.7a6.34 6.34 0 0 0 10.86 4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.06z"/></svg>
+                    TikTok
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-yellow-400/10 text-yellow-300 border border-yellow-400/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12.035 1.5c-4.148 0-6.735 2.845-6.735 5.795 0 1.258.468 2.368 1.157 3.197.106.126.155.281.127.439-.06.332-.234.994-.523 1.343-.223.271-.478.344-.738.344-.225 0-.46-.057-.694-.176-.328-.168-.781-.307-1.122.02-.279.268-.13.785.203 1.051 1.096.877 2.148.889 2.651.889.308 0 .614-.047.886-.142.348-.12.571.189.479.489-.317 1.034-.582 2.385.666 3.109 1.11.644 2.457.885 3.694.885 1.236 0 2.584-.241 3.694-.885 1.248-.724.983-2.075.666-3.109-.092-.3.131-.609.479-.489.272.095.578.142.886.142.503 0 1.555-.012 2.651-.889.333-.266.482-.783.203-1.051-.341-.327-.794-.188-1.122-.02-.234.119-.469.176-.694.176-.26 0-.515-.073-.738-.344-.289-.349-.463-1.011-.523-1.343-.028-.158.021-.313.127-.439.689-.829 1.157-1.939 1.157-3.197 0-2.95-2.587-5.795-6.735-5.795z"/></svg>
+                    Snapchat
+                </span>
+            </div>
+
+            <div class="relative w-full max-w-3xl mx-auto flex flex-col items-center">
+                <div class="relative w-full mb-4 group">
+                    <div class="absolute -inset-0.5 bg-gradient-to-r from-brand-cyan to-brand-purple rounded-xl blur opacity-30 group-hover:opacity-60 transition duration-500 glow-border"></div>
+                    <div class="relative flex items-center bg-[#111128] rounded-xl overflow-hidden border border-white/10 focus-within:border-brand-cyan/50 transition-colors">
+                        <input type="text" id="url-input" class="w-full bg-transparent px-6 py-5 text-lg outline-none placeholder-slate-500 text-white" placeholder="Paste video URL here...">
+                        
+                        <!-- Platform Badge (Hidden by default) -->
+                        <div id="platform-badge" class="hidden items-center gap-1.5 px-3 py-1 mr-2 rounded-full text-xs font-medium bg-white/10 backdrop-blur-md">
+                            <span id="platform-badge-icon"></span>
+                            <span id="platform-badge-name"></span>
+                        </div>
+
+                        <!-- Clear Input Button (Hidden by default) -->
+                        <button id="clear-btn" class="hidden p-4 mr-1 text-slate-400 hover:text-white transition-colors flex-shrink-0" title="Clear link">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <button id="fetch-btn" class="w-full md:w-auto px-10 py-4 rounded-xl text-lg font-semibold text-white bg-gradient-to-r from-brand-cyan to-brand-purple hover:from-cyan-400 hover:to-purple-500 transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_30px_rgba(139,92,246,0.5)] btn-shimmer relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span class="relative z-10 flex items-center justify-center gap-2">
+                        <span id="fetch-text">Fetch Video</span>
+                        <svg id="fetch-spinner" class="animate-spin hidden w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    </span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Instagram Auth Help Banner (hidden by default) -->
+        <section id="instagram-help" class="w-full max-w-4xl mx-auto mb-6 hidden">
+            <div class="glass rounded-xl p-5 border border-pink-500/20 bg-pink-500/5">
+                <div class="flex items-start gap-4">
+                    <div class="text-2xl flex-shrink-0 mt-0.5">📸</div>
+                    <div class="flex-grow">
+                        <h3 class="text-base font-semibold text-pink-300 mb-2">Instagram requires authentication</h3>
+                        <p class="text-sm text-slate-400 mb-3">Instagram blocks downloads without login cookies. To enable Instagram downloads:</p>
+                        <ol class="text-sm text-slate-400 space-y-1.5 list-decimal list-inside">
+                            <li>Log into Instagram on <strong class="text-slate-300">Chrome</strong> or <strong class="text-slate-300">Firefox</strong></li>
+                            <li>Install the <a href="https://chrome.google.com/webstore/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc" target="_blank" class="text-brand-cyan hover:underline">"Get cookies.txt LOCALLY"</a> browser extension</li>
+                            <li>Visit Instagram and export cookies as <code class="bg-white/10 px-1.5 py-0.5 rounded text-xs text-pink-300">cookies.txt</code></li>
+                            <li>Place the file in the project root: <code class="bg-white/10 px-1.5 py-0.5 rounded text-xs text-pink-300">downloader/cookies.txt</code></li>
+                            <li>Restart the server — Instagram downloads will work automatically</li>
+                        </ol>
+                        <div id="cookies-status" class="mt-3 text-xs font-medium"></div>
+                    </div>
+                    <button onclick="document.getElementById('instagram-help').classList.add('hidden')" class="text-slate-500 hover:text-white flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. Video Preview Card -->
+        <section id="preview-card-container" class="w-full max-w-4xl mx-auto mb-16 hidden">
+            <div id="preview-card" class="glass rounded-2xl p-4 md:p-6 border border-white/10 shadow-2xl relative overflow-hidden fade-in">
+                <!-- Inner glow -->
+                <div class="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-32 bg-brand-cyan/20 blur-[60px] pointer-events-none"></div>
+                
+                <div class="flex flex-col md:flex-row gap-6 relative z-10">
+                    <!-- Thumbnail -->
+                    <div class="w-full md:w-5/12 flex-shrink-0 relative rounded-xl overflow-hidden aspect-video bg-black/50 border border-white/5">
+                        <img id="video-thumbnail" src="" alt="Video thumbnail" class="w-full h-full object-cover">
+                        <div id="video-duration" class="absolute bottom-2 right-2 bg-black/80 backdrop-blur-md px-2 py-1 rounded text-xs font-semibold text-white">
+                            00:00
+                        </div>
+                    </div>
+                    
+                    <!-- Info & Controls -->
+                    <div class="w-full md:w-7/12 flex flex-col">
+                        <h2 id="video-title" class="text-xl md:text-2xl font-bold text-white mb-2 line-clamp-2">Video Title</h2>
+                        <div class="flex items-center gap-3 mb-6">
+                            <span id="video-uploader" class="text-sm text-slate-400">Uploader Name</span>
+                            <span class="w-1 h-1 rounded-full bg-slate-600"></span>
+                            <span id="video-platform-pill" class="text-xs font-medium px-2 py-0.5 rounded-full flex items-center gap-1">
+                                <!-- Platform icon and name injected here -->
+                            </span>
+                        </div>
+                        
+                        <!-- In-Card Sponsor Bar (Inline Ad Slot) -->
+                        <div id="ad-slot-card-inline"></div>
+
+                        <div class="mb-3 text-sm font-medium text-slate-300">Select Quality:</div>
+                        <div id="quality-selector" class="flex flex-wrap gap-2 mb-6">
+                            <!-- Quality pills injected here -->
+                        </div>
+                        
+                        <div class="mt-auto">
+                            <button id="download-btn" class="w-full py-4 rounded-xl text-lg font-bold text-white bg-gradient-to-r from-brand-green to-emerald-400 hover:from-emerald-400 hover:to-brand-green transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] relative overflow-hidden group">
+                                <div id="download-progress" class="absolute left-0 top-0 bottom-0 bg-white/20 w-0 transition-all duration-300 ease-out"></div>
+                                <span class="relative z-10 flex items-center justify-center gap-2">
+                                    <svg id="download-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                    <span id="download-text">Download</span>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Native In-Feed Ad Placement Slot -->
+            <div id="ad-slot-native"></div>
+        </section>
+
+        <!-- 6. How It Works Section -->
+        <section id="how-it-works" class="w-full max-w-5xl mx-auto py-16 border-t border-white/5">
+            <h2 class="text-3xl font-bold text-center mb-12">How It Works</h2>
+            <div class="flex flex-col md:flex-row justify-between items-center relative">
+                <!-- Connecting Line (Desktop) -->
+                <div class="hidden md:block absolute top-1/2 left-0 w-full h-0.5 bg-gradient-to-r from-brand-cyan/20 via-brand-purple/20 to-brand-green/20 -z-10"></div>
+                
+                <!-- Steps -->
+                <div class="flex flex-col items-center text-center mb-8 md:mb-0 bg-bg-primary/80 p-4 rounded-xl backdrop-blur-sm">
+                    <div class="w-16 h-16 rounded-full bg-gradient-to-br from-brand-cyan to-blue-500 flex items-center justify-center text-white text-2xl font-bold mb-4 shadow-[0_0_15px_rgba(6,182,212,0.4)]">1</div>
+                    <h3 class="text-xl font-semibold mb-2">Paste URL</h3>
+                    <p class="text-slate-400 text-sm max-w-[200px]">Copy the video link and paste it into the input field above.</p>
+                </div>
+                
+                <div class="flex flex-col items-center text-center mb-8 md:mb-0 bg-bg-primary/80 p-4 rounded-xl backdrop-blur-sm">
+                    <div class="w-16 h-16 rounded-full bg-gradient-to-br from-brand-purple to-pink-500 flex items-center justify-center text-white text-2xl font-bold mb-4 shadow-[0_0_15px_rgba(139,92,246,0.4)]">2</div>
+                    <h3 class="text-xl font-semibold mb-2">Choose Quality</h3>
+                    <p class="text-slate-400 text-sm max-w-[200px]">Select your preferred video resolution or audio format.</p>
+                </div>
+                
+                <div class="flex flex-col items-center text-center bg-bg-primary/80 p-4 rounded-xl backdrop-blur-sm">
+                    <div class="w-16 h-16 rounded-full bg-gradient-to-br from-brand-green to-emerald-500 flex items-center justify-center text-white text-2xl font-bold mb-4 shadow-[0_0_15px_rgba(16,185,129,0.4)]">3</div>
+                    <h3 class="text-xl font-semibold mb-2">Download</h3>
+                    <p class="text-slate-400 text-sm max-w-[200px]">Click download and save the file directly to your device.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. Features Section -->
+        <section id="features" class="w-full max-w-5xl mx-auto py-16">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Feature 1 -->
+                <div class="glass p-8 rounded-2xl border border-white/5 hover-lift group">
+                    <div class="text-4xl mb-4 group-hover:scale-110 transition-transform">🌐</div>
+                    <h3 class="text-xl font-semibold mb-3 text-white">Multi-Platform</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">Download from YouTube, Instagram, and Pinterest with a single tool. No need for multiple apps.</p>
+                </div>
+                <!-- Feature 2 -->
+                <div class="glass p-8 rounded-2xl border border-white/5 hover-lift group">
+                    <div class="text-4xl mb-4 group-hover:scale-110 transition-transform">⚡</div>
+                    <h3 class="text-xl font-semibold mb-3 text-white">Lightning Fast</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">Direct video extraction with no waiting. Get your files in seconds at maximum speed.</p>
+                </div>
+                <!-- Feature 3 -->
+                <div class="glass p-8 rounded-2xl border border-white/5 hover-lift group">
+                    <div class="text-4xl mb-4 group-hover:scale-110 transition-transform">🔒</div>
+                    <h3 class="text-xl font-semibold mb-3 text-white">Private & Secure</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">No registration required, no data collection. Your downloads stay completely private.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Bottom Banner Placement Zone -->
+        <div id="ad-slot-banner" class="w-full max-w-4xl mx-auto mb-16"></div>
+
+    </main>
+
+    <!-- 7. Footer -->
+    <footer class="w-full border-t border-white/10 bg-[#0a0a1a]/90 backdrop-blur-md mt-auto py-10">
+        <div class="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-brand-cyan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                <span class="text-xl font-bold text-white">SaveMedia</span>
+            </div>
+            <div class="flex gap-6 text-sm text-slate-400">
+                <a href="#" class="hover:text-white transition-colors">About</a>
+                <a href="#" class="hover:text-white transition-colors">Privacy Policy</a>
+                <a href="#" class="hover:text-white transition-colors">Terms of Service</a>
+                <a href="#" class="hover:text-white transition-colors">Contact</a>
+            </div>
+            <div class="text-sm text-slate-500 text-center md:text-right">
+                <p>&copy; 2026 SaveMedia. All rights reserved.</p>
+                <p class="text-xs mt-1 opacity-70">SaveMedia does not host any copyrighted content.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-3 pointer-events-none"></div>
+
+    <!-- Floating Sticky Ad Bar Container (Hidden by default, managed by ads.js) -->
+    <div id="ad-sticky-bar" class="hidden"></div>
+
+    <!-- Ad Network Manager & Application Scripts -->
+    <script src="js/ads.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
