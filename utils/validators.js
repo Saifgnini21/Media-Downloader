@@ -8,16 +8,14 @@ function validateUrl(url) {
     return { valid: false, platform: null };
   }
 
-  const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/i;
-  // Accept any instagram.com URL (reels, posts, stories, tv, profile clips etc.)
-  const instagramRegex = /^(https?:\/\/)?(www\.)?(instagram\.com)\/.+$/i;
-  const pinterestRegex = /^(https?:\/\/)?(pin\.it|([a-z]{2}\.)?pinterest\.com\/pin)\/.+$/i;
-  const twitterRegex = /^(https?:\/\/)?(www\.)?(twitter\.com|x\.com)\/.+$/i;
-  const facebookRegex = /^(https?:\/\/)?(www\.|web\.|m\.)?(facebook\.com|fb\.watch|fb\.gg)\/.+$/i;
-  const linkedinRegex = /^(https?:\/\/)?([a-z]{2,3}\.)?(linkedin\.com)\/.+$/i;
-  // TikTok: www, vm, vt subdomains or no subdomain
-  const tiktokRegex = /^(https?:\/\/)?(www\.|vm\.|vt\.)?(tiktok\.com)\/.+$/i;
-  const snapchatRegex = /^(https?:\/\/)?(www\.|story\.|t\.)?(snapchat\.com)\/.+$/i;
+  const youtubeRegex = /^(https?:\/\/)?([a-z0-9-]+\.)?(youtube\.com|youtu\.be)\/.+$/i;
+  const instagramRegex = /^(https?:\/\/)?([a-z0-9-]+\.)?(instagram\.com)\/.+$/i;
+  const pinterestRegex = /^(https?:\/\/)?([a-z0-9-]+\.)?(pinterest\.(com|[a-z]{2,3}(\.[a-z]{2})?)|pin\.it|pinimg\.com)\/.+$/i;
+  const twitterRegex = /^(https?:\/\/)?([a-z0-9-]+\.)?(twitter\.com|x\.com)\/.+$/i;
+  const facebookRegex = /^(https?:\/\/)?([a-z0-9-]+\.)?(facebook\.com|fb\.watch|fb\.gg)\/.+$/i;
+  const linkedinRegex = /^(https?:\/\/)?([a-z0-9-]+\.)?(linkedin\.com)\/.+$/i;
+  const tiktokRegex = /^(https?:\/\/)?([a-z0-9-]+\.)?(tiktok\.com)\/.+$/i;
+  const snapchatRegex = /^(https?:\/\/)?([a-z0-9-]+\.)?(snapchat\.com)\/.+$/i;
 
   if (youtubeRegex.test(url)) return { valid: true, platform: 'youtube' };
   if (instagramRegex.test(url)) return { valid: true, platform: 'instagram' };
@@ -57,4 +55,31 @@ function sanitizeUrl(url) {
   }
 }
 
-module.exports = { validateUrl, sanitizeUrl };
+/**
+ * Follows redirects for short links (like pin.it, bit.ly, t.co) to retrieve canonical destination URL
+ * @param {string} url - Input URL
+ * @returns {Promise<string>} Resolved canonical URL
+ */
+async function resolveRedirectUrl(url) {
+  try {
+    if (!/pin\.it|t\.co|bit\.ly|tinyurl\.com/i.test(url)) {
+      return url;
+    }
+    let target = url.trim();
+    if (!/^https?:\/\//i.test(target)) {
+      target = 'https://' + target;
+    }
+    const response = await fetch(target, {
+      method: 'GET',
+      redirect: 'follow',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    });
+    return response.url || url;
+  } catch (err) {
+    return url;
+  }
+}
+
+module.exports = { validateUrl, sanitizeUrl, resolveRedirectUrl };

@@ -70,7 +70,7 @@ function normalizeFormats(rawFormats, info = {}) {
         formatId: bestFormat.format_id || 'best',
         ext: bestFormat.ext || 'mp4',
         filesize: bestFormat.filesize || bestFormat.filesize_approx || null,
-        label: `${res}p ${(bestFormat.ext || 'mp4').toUpperCase()}`,
+        label: `${res}p ${(bestFormat.ext || 'mp4').toUpperCase()}${!hasAudio ? ' (No Audio)' : ''}`,
         hasAudio: hasAudio
       });
     }
@@ -81,6 +81,11 @@ function normalizeFormats(rawFormats, info = {}) {
   if (formats.length === 0 && videoFormats.length > 0) {
     const seenHeights = new Set();
     const sortedVideoFormats = [...videoFormats].sort((a, b) => {
+      // Prioritize formats with audio over silent formats
+      const aAudio = (a.acodec && a.acodec !== 'none') ? 1 : 0;
+      const bAudio = (b.acodec && b.acodec !== 'none') ? 1 : 0;
+      if (aAudio !== bAudio) return bAudio - aAudio;
+
       const heightDiff = (b.height || 0) - (a.height || 0);
       if (heightDiff !== 0) return heightDiff;
       if (a.ext === 'mp4' && b.ext !== 'mp4') return -1;
@@ -99,7 +104,7 @@ function normalizeFormats(rawFormats, info = {}) {
         formatId: fmt.format_id || 'best',
         ext: fmt.ext || 'mp4',
         filesize: fmt.filesize || fmt.filesize_approx || null,
-        label: `${h} ${(fmt.ext || 'MP4').toUpperCase()}`,
+        label: `${h} ${(fmt.ext || 'MP4').toUpperCase()}${!hasAudio ? ' (No Audio)' : ''}`,
         hasAudio: hasAudio
       });
 
@@ -109,7 +114,7 @@ function normalizeFormats(rawFormats, info = {}) {
 
   // FALLBACK 2: If no video formats were extracted yet (e.g. Pinterest direct URL or single stream info)
   const hasVideoFormat = formats.some(f => f.quality !== 'audio');
-  if (!hasVideoFormat) {
+  if (!hasVideoFormat && (videoFormats.length > 0 || (info.formats && info.formats.length > 0))) {
     formats.push({
       quality: 'best',
       formatId: 'best',
@@ -120,15 +125,17 @@ function normalizeFormats(rawFormats, info = {}) {
     });
   }
 
-  // Add audio option
-  formats.push({
-    quality: 'audio',
-    formatId: 'bestaudio',
-    ext: 'mp3',
-    filesize: null,
-    label: 'MP3',
-    hasAudio: true
-  });
+  // Add audio option only if video formats or raw formats exist
+  if (formats.length > 0 || (rawFormats && rawFormats.length > 0)) {
+    formats.push({
+      quality: 'audio',
+      formatId: 'bestaudio',
+      ext: 'mp3',
+      filesize: null,
+      label: 'MP3',
+      hasAudio: true
+    });
+  }
 
   return formats;
 }
@@ -144,7 +151,8 @@ function parseYtdlpError(stderr) {
   if (errStr.includes('video unavailable') || errStr.includes('this video is not available')) return 'This video is unavailable in your region or has been removed.';
   if (errStr.includes('sign in to confirm') || errStr.includes('login required')) return 'This content requires authentication. Please set up cookies.';
   if (errStr.includes('empty media response') || errStr.includes('cookies')) return 'Instagram requires authentication. Please configure cookies (see Settings on the homepage).';
-  if (errStr.includes('no video formats found') || errStr.includes('no formats found')) return 'No downloadable video found on this page. The content may only contain an image.';
+  if (errStr.includes('no video formats found') || errStr.includes('no formats found')) return 'No downloadable video found on this page. The Pin may contain only an image or is unavailable.';
+  if (errStr.includes('no audio stream') || errStr.includes('does not contain audio')) return 'This video does not contain an audio track to extract.';
   if (errStr.includes('http error 429') || errStr.includes('too many requests')) return 'You are being rate limited. Please wait a minute and try again.';
   if (errStr.includes('http error 404') || errStr.includes('not found')) return 'Content not found. Please check the URL is correct.';
   if (errStr.includes('unsupported url')) return 'This URL is not supported. Please use a direct video link.';
@@ -180,11 +188,11 @@ function getVideoInfo(url, platform = '') {
     let stdoutData = '';
     let stderrData = '';
 
-    // Set 45-second timeout
+    // Set 60-second timeout
     const timeout = setTimeout(() => {
       ytProcess.kill();
-      reject(new Error('Request timed out after 45 seconds'));
-    }, 45000);
+      reject(new Error('Request timed out after 60 seconds'));
+    }, 60000);
 
     ytProcess.stdout.on('data', (data) => {
       stdoutData += data.toString();
@@ -204,6 +212,16 @@ function getVideoInfo(url, platform = '') {
 
       try {
         const info = JSON.parse(stdoutData);
+        const formats = normalizeFormats(info.formats, info);
+
+        // Check if there are no video formats found
+        const hasVideo = formats.some(f => f.quality !== 'audio');
+        if (!hasVideo && (!info.formats || info.formats.length === 0)) {
+          if (info.thumbnails && info.thumbnails.length > 0) {
+            return reject(new Error('This Pinterest pin contains an image, not a video. Please provide a link to a video Pin.'));
+          }
+          return reject(new Error('No downloadable video found on this page.'));
+        }
         
         const normalizedInfo = {
           id: info.id,
@@ -212,12 +230,16 @@ function getVideoInfo(url, platform = '') {
           duration: info.duration || 0,
           uploader: info.uploader || info.channel || info.creator || 'Unknown',
           platform: info.extractor,
-          formats: normalizeFormats(info.formats, info)
+          formats: formats
         };
 
         resolve(normalizedInfo);
       } catch (err) {
-        reject(new Error('Failed to parse video information from yt-dlp.'));
+        if (err.message && (err.message.includes('Pinterest pin contains an image') || err.message.includes('No downloadable video'))) {
+          reject(err);
+        } else {
+          reject(new Error('Failed to parse video information from yt-dlp.'));
+        }
       }
     });
 
@@ -240,7 +262,11 @@ function downloadStream(url, formatId, platform = '') {
   
   let formatSpec;
   if (formatId === 'best') {
-    formatSpec = 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best';
+    formatSpec = platform === 'pinterest' 
+      ? 'best/bestvideo+bestaudio' 
+      : 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best';
+  } else if (platform === 'pinterest') {
+    formatSpec = `${formatId}/best`;
   } else {
     formatSpec = `${formatId}+bestaudio/${formatId}`;
   }
@@ -293,5 +319,7 @@ module.exports = {
   downloadStream,
   downloadAudio,
   hasCookiesFile,
-  COOKIES_FILE
+  COOKIES_FILE,
+  normalizeFormats,
+  parseYtdlpError
 };

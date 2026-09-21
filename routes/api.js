@@ -2,7 +2,7 @@ const express = require('express');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
-const { validateUrl, sanitizeUrl } = require('../utils/validators');
+const { validateUrl, sanitizeUrl, resolveRedirectUrl } = require('../utils/validators');
 const { getPlatformConfig } = require('../utils/platforms');
 const { getVideoInfo, downloadStream, downloadAudio, hasCookiesFile, COOKIES_FILE } = require('../utils/ytdlp');
 
@@ -46,9 +46,10 @@ router.post('/fetch-info', fetchInfoLimiter, async (req, res) => {
     }
 
     const sanitizedUrl = sanitizeUrl(url);
+    const resolvedUrl = await resolveRedirectUrl(sanitizedUrl);
     
     // Pass the detected platform so yt-dlp can use appropriate auth
-    const videoInfo = await getVideoInfo(sanitizedUrl, platform);
+    const videoInfo = await getVideoInfo(resolvedUrl, platform);
     const platformConfig = getPlatformConfig(platform);
 
     return res.json({
@@ -67,7 +68,7 @@ router.post('/fetch-info', fetchInfoLimiter, async (req, res) => {
 });
 
 // GET /api/download
-router.get('/download', downloadLimiter, (req, res) => {
+router.get('/download', downloadLimiter, async (req, res) => {
   try {
     const { url, formatId, title = 'download' } = req.query;
 
@@ -81,6 +82,7 @@ router.get('/download', downloadLimiter, (req, res) => {
     }
 
     const sanitizedUrl = sanitizeUrl(url);
+    const resolvedUrl = await resolveRedirectUrl(sanitizedUrl);
     
     // Sanitize title for filename
     const sanitizedTitle = title.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 200);
@@ -90,11 +92,11 @@ router.get('/download', downloadLimiter, (req, res) => {
     let ext;
 
     if (formatId === 'audio' || formatId === 'mp3' || formatId === 'bestaudio') {
-      downloadTask = downloadAudio(sanitizedUrl, platform);
+      downloadTask = downloadAudio(resolvedUrl, platform);
       contentType = 'audio/mpeg';
       ext = 'mp3';
     } else {
-      downloadTask = downloadStream(sanitizedUrl, formatId, platform);
+      downloadTask = downloadStream(resolvedUrl, formatId, platform);
       contentType = 'video/mp4';
       ext = 'mp4';
     }

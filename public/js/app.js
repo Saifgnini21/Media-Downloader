@@ -94,14 +94,14 @@ function sanitizeFilename(title) {
 function detectPlatform(url) {
     if (!url) return null;
     
-    if (/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)/i.test(url)) return 'YOUTUBE';
-    if (/(?:https?:\/\/)?(?:www\.)?instagram\.com/i.test(url)) return 'INSTAGRAM';
-    if (/(?:https?:\/\/)?(?:www\.)?(?:pinterest\.com|pin\.it)/i.test(url)) return 'PINTEREST';
-    if (/(?:https?:\/\/)?(?:www\.)?(?:twitter\.com|x\.com)/i.test(url)) return 'X';
-    if (/(?:https?:\/\/)?(?:www\.|web\.|m\.)?(?:facebook\.com|fb\.watch|fb\.gg)/i.test(url)) return 'FACEBOOK';
-    if (/(?:https?:\/\/)?(?:[a-z]{2,3}\.)?linkedin\.com/i.test(url)) return 'LINKEDIN';
-    if (/(?:https?:\/\/)?(?:www\.|vm\.|vt\.)?tiktok\.com/i.test(url)) return 'TIKTOK';
-    if (/(?:https?:\/\/)?(?:www\.|story\.|t\.)?snapchat\.com/i.test(url)) return 'SNAPCHAT';
+    if (/(?:https?:\/\/)?(?:[a-z0-9-]+\.)?(?:youtube\.com|youtu\.be)/i.test(url)) return 'YOUTUBE';
+    if (/(?:https?:\/\/)?(?:[a-z0-9-]+\.)?(?:instagram\.com)/i.test(url)) return 'INSTAGRAM';
+    if (/(?:https?:\/\/)?(?:[a-z0-9-]+\.)?(?:pinterest\.(?:com|[a-z]{2,3}(?:\.[a-z]{2})?)|pin\.it|pinimg\.com)/i.test(url)) return 'PINTEREST';
+    if (/(?:https?:\/\/)?(?:[a-z0-9-]+\.)?(?:twitter\.com|x\.com)/i.test(url)) return 'X';
+    if (/(?:https?:\/\/)?(?:[a-z0-9-]+\.)?(?:facebook\.com|fb\.watch|fb\.gg)/i.test(url)) return 'FACEBOOK';
+    if (/(?:https?:\/\/)?(?:[a-z0-9-]+\.)?(?:linkedin\.com)/i.test(url)) return 'LINKEDIN';
+    if (/(?:https?:\/\/)?(?:[a-z0-9-]+\.)?(?:tiktok\.com)/i.test(url)) return 'TIKTOK';
+    if (/(?:https?:\/\/)?(?:[a-z0-9-]+\.)?(?:snapchat\.com)/i.test(url)) return 'SNAPCHAT';
     
     return null;
 }
