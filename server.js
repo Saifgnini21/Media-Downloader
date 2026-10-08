@@ -38,7 +38,16 @@ if (require.main === module) {
   app.listen(PORT, async () => {
     console.log(`===============================================`);
     console.log(`SaveMedia Server is running on port ${PORT}`);
-    const health = await getSystemHealth();
+    let health = await getSystemHealth();
+    if (!health.ytdlp.installed) {
+      try {
+        const { ensureYtdlp } = require('./scripts/ensure-ytdlp');
+        await ensureYtdlp();
+        health = await getSystemHealth();
+      } catch (err) {
+        console.warn('Auto-installation of yt-dlp skipped:', err.message);
+      }
+    }
     console.log(`yt-dlp version: ${health.ytdlp.version}`);
     console.log(`ffmpeg: ${health.ffmpeg.installed ? 'Available' : 'Missing'}`);
     console.log(`Cookies configured: ${health.cookies.configured ? 'Yes' : 'No'}`);

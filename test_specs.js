@@ -146,6 +146,25 @@ console.log('\n[SPEC 6] Cookies Configuration:');
 assert(typeof COOKIES_FILE === 'string' && COOKIES_FILE.endsWith('cookies.txt'), 'Cookies path configured');
 assert(typeof hasCookiesFile() === 'boolean', 'Cookies existence check returns boolean');
 
+// 7. Resilient yt-dlp Executable Resolution
+console.log('\n[SPEC 7] Resilient yt-dlp Resolution & Execution:');
+const { getYtdlpExecution } = require('./utils/ytdlp');
+const { execFileSync } = require('child_process');
+const fs = require('fs');
+const execConfig = getYtdlpExecution();
+assert(typeof execConfig === 'object' && execConfig !== null, 'getYtdlpExecution returns object');
+assert(typeof execConfig.command === 'string' && execConfig.command.length > 0, 'Resolved command is non-empty string');
+assert(Array.isArray(execConfig.argsPrefix), 'Resolved argsPrefix is array');
+const commandExists = fs.existsSync(execConfig.command) || execConfig.command === 'yt-dlp';
+assert(commandExists, `Command is accessible on system: ${execConfig.command}`);
+
+try {
+  const versionOutput = execFileSync(execConfig.command, [...execConfig.argsPrefix, '--version']).toString().trim();
+  assert(versionOutput.length >= 8, `yt-dlp executes directly and returns version: ${versionOutput}`);
+} catch (e) {
+  assert(false, `Failed to execute resolved yt-dlp: ${e.message}`);
+}
+
 console.log('\n====================================================');
 console.log(`TOTAL SPECS TESTED: ${totalTests} | PASSED: ${passedTests} | FAILED: ${totalTests - passedTests}`);
 console.log('====================================================');

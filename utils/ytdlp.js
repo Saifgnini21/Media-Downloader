@@ -28,6 +28,83 @@ function getAuthArgs(platform) {
 }
 
 /**
+ * Resolves the best available yt-dlp executable path and any required argument prefixes.
+ * Priority:
+ * 1. Local standalone binary in project root (bin/yt-dlp.exe or bin/yt-dlp)
+ * 2. Explicit environment variable YTDLP_PATH
+ * 3. Standard Windows Python installation directories (Python installations Scripts yt-dlp.exe)
+ * 4. System PATH 'yt-dlp'
+ * @returns {{ command: string, argsPrefix: string[] }}
+ */
+function getYtdlpExecution() {
+  // 1. Local standalone binary (completely independent of PATH and Python)
+  const binaryName = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp';
+  const localBinary = path.join(__dirname, '..', 'bin', binaryName);
+  if (fs.existsSync(localBinary)) {
+    return { command: localBinary, argsPrefix: [] };
+  }
+
+  // 2. Environment variable override
+  if (process.env.YTDLP_PATH && fs.existsSync(process.env.YTDLP_PATH)) {
+    return { command: process.env.YTDLP_PATH, argsPrefix: [] };
+  }
+
+  // 3. Known Windows Python user & system installation locations
+  if (process.platform === 'win32') {
+    const localAppData = process.env.LOCALAPPDATA || '';
+    const appData = process.env.APPDATA || '';
+    const candidateDirs = [
+      path.join(localAppData, 'Programs', 'Python'),
+      path.join(appData, 'Python'),
+      'C:\\Python313',
+      'C:\\Python312',
+      'C:\\Python311',
+      'C:\\Python310',
+      'C:\\Program Files\\Python313',
+      'C:\\Program Files\\Python312',
+      'C:\\Program Files\\Python311',
+      'C:\\Program Files\\Python310'
+    ];
+
+    for (const baseDir of candidateDirs) {
+      if (fs.existsSync(baseDir)) {
+        try {
+          const entries = fs.readdirSync(baseDir, { withFileTypes: true });
+          for (const entry of entries) {
+            if (entry.isDirectory()) {
+              const scriptsExe = path.join(baseDir, entry.name, 'Scripts', 'yt-dlp.exe');
+              if (fs.existsSync(scriptsExe)) {
+                return { command: scriptsExe, argsPrefix: [] };
+              }
+            }
+          }
+        } catch (e) {}
+
+        const directScriptsExe = path.join(baseDir, 'Scripts', 'yt-dlp.exe');
+        if (fs.existsSync(directScriptsExe)) {
+          return { command: directScriptsExe, argsPrefix: [] };
+        }
+      }
+    }
+  }
+
+  // 4. Fallback to standard command on PATH
+  return { command: 'yt-dlp', argsPrefix: [] };
+}
+
+/**
+ * Spawns yt-dlp using the resolved executable path
+ * @param {string[]} args
+ * @param {import('child_process').SpawnOptions} [options]
+ * @returns {import('child_process').ChildProcess}
+ */
+function spawnYtdlp(args, options = {}) {
+  const { command, argsPrefix } = getYtdlpExecution();
+  const finalArgs = [...argsPrefix, ...args];
+  return spawn(command, finalArgs, { windowsHide: true, ...options });
+}
+
+/**
  * Filter formats to include useful video formats and always provide a fallback.
  * Handles YouTube (standard resolutions), Instagram/Pinterest (non-standard or single format).
  * @param {Array} rawFormats
@@ -187,7 +264,7 @@ function getVideoInfo(url, platform = '') {
       ...authArgs,
       url
     ];
-    const ytProcess = spawn('yt-dlp', args, { windowsHide: true });
+    const ytProcess = spawnYtdlp(args, { windowsHide: true });
     
     let stdoutData = '';
     let stderrData = '';
@@ -298,7 +375,7 @@ function downloadStream(url, formatId, platform = '') {
     ...authArgs,
     url
   ];
-  const ytProcess = spawn('yt-dlp', args, { windowsHide: true });
+  const ytProcess = spawnYtdlp(args, { windowsHide: true });
   return { stream: ytProcess.stdout, process: ytProcess };
 }
 
@@ -324,7 +401,7 @@ function downloadAudio(url, platform = '') {
     ...authArgs,
     url
   ];
-  const ytProcess = spawn('yt-dlp', args, { windowsHide: true });
+  const ytProcess = spawnYtdlp(args, { windowsHide: true });
   return { stream: ytProcess.stdout, process: ytProcess };
 }
 
@@ -335,5 +412,7 @@ module.exports = {
   hasCookiesFile,
   COOKIES_FILE,
   normalizeFormats,
-  parseYtdlpError
+  parseYtdlpError,
+  getYtdlpExecution,
+  spawnYtdlp
 };

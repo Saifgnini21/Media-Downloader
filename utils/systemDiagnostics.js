@@ -1,7 +1,7 @@
-const { exec, execSync } = require('child_process');
+const { exec, execFile, execSync, execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { hasCookiesFile, COOKIES_FILE } = require('./ytdlp');
+const { hasCookiesFile, COOKIES_FILE, getYtdlpExecution } = require('./ytdlp');
 
 let lastUpdateCheck = 0;
 const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
@@ -18,7 +18,9 @@ function getSystemHealth() {
     let ffmpegInstalled = false;
 
     try {
-      ytdlpVersion = execSync('yt-dlp --version', { timeout: 5000, windowsHide: true }).toString().trim();
+      const { command, argsPrefix } = getYtdlpExecution();
+      const output = execFileSync(command, [...argsPrefix, '--version'], { timeout: 8000, windowsHide: true });
+      ytdlpVersion = output.toString().trim();
       ytdlpInstalled = true;
     } catch (e) {
       ytdlpVersion = 'not found on PATH';
@@ -66,20 +68,21 @@ function getSystemHealth() {
  */
 function autoUpdateYtdlp() {
   return new Promise((resolve) => {
-    // Try pip update first, then yt-dlp -U fallback
-    exec('python -m pip install -U yt-dlp', { timeout: 60000, windowsHide: true }, (pipErr, pipStdout) => {
-      if (!pipErr) {
-        lastUpdateCheck = Date.now();
-        return resolve({ success: true, output: pipStdout.trim() });
+    const { command, argsPrefix } = getYtdlpExecution();
+    // Try yt-dlp native self-update first
+    const updateArgs = [...argsPrefix, '-U'];
+    execFile(command, updateArgs, { timeout: 60000, windowsHide: true }, (ytErr, ytStdout, ytStderr) => {
+      lastUpdateCheck = Date.now();
+      if (!ytErr) {
+        return resolve({ success: true, output: (ytStdout || '').trim() });
       }
 
-      exec('yt-dlp -U', { timeout: 60000, windowsHide: true }, (ytErr, ytStdout, ytStderr) => {
-        lastUpdateCheck = Date.now();
-        if (ytErr) {
-          resolve({ success: false, output: ytStderr.trim() || ytErr.message });
-        } else {
-          resolve({ success: true, output: ytStdout.trim() });
+      // Fallback to pip install if using Python-managed distribution
+      exec('python -m pip install -U yt-dlp', { timeout: 60000, windowsHide: true }, (pipErr, pipStdout) => {
+        if (!pipErr) {
+          return resolve({ success: true, output: (pipStdout || '').trim() });
         }
+        resolve({ success: false, output: (ytStderr || '').trim() || ytErr.message });
       });
     });
   });
