@@ -47,6 +47,8 @@ const validationCases = [
   ['https://www.instagram.com/reel/C3abc123/', 'instagram', 'Instagram reel link'],
   ['https://instagram.com/p/C3abc123/', 'instagram', 'Instagram post link'],
   ['https://m.instagram.com/p/C3abc123/', 'instagram', 'Instagram mobile link'],
+  ['https://instagr.am/p/DRVBXWtDtJb/', 'instagram', 'Instagram instagr.am link'],
+  ['https://ig.me/v/DRVBXWtDtJb', 'instagram', 'Instagram ig.me short link'],
 
   // Pinterest
   ['https://www.pinterest.com/pin/1084663891475263837/', 'pinterest', 'Pinterest desktop pin link'],
@@ -92,9 +94,10 @@ for (const [url, expectedPlatform, desc] of validationCases) {
 
 // 3. Sanitization & Short Link Resolution
 console.log('\n[SPEC 3] URL Sanitization:');
-const trackingUrl = 'https://www.youtube.com/watch?v=abc1234&si=secret_tracker&utm_source=fb&utm_medium=cpc&fbclid=12345';
+const trackingUrl = 'https://www.instagram.com/reel/abc1234?igsh=secret_tracking&si=secret_tracker&utm_source=fb&utm_medium=cpc&fbclid=12345';
 const sanitized = sanitizeUrl(trackingUrl);
 assert(!sanitized.includes('si='), 'Strips YouTube si parameter');
+assert(!sanitized.includes('igsh='), 'Strips Instagram igsh parameter');
 assert(!sanitized.includes('utm_source='), 'Strips utm_source');
 assert(!sanitized.includes('fbclid='), 'Strips fbclid');
 assert(sanitized.startsWith('https://'), 'Ensures HTTPS protocol');

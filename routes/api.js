@@ -24,11 +24,59 @@ const downloadLimiter = rateLimit({
 
 // GET /api/cookies-status — Check if cookies file is configured
 router.get('/cookies-status', (req, res) => {
+  const exists = hasCookiesFile();
+  let size = 0;
+  let modifiedAt = null;
+  if (exists) {
+    try {
+      const stats = fs.statSync(COOKIES_FILE);
+      size = stats.size;
+      modifiedAt = stats.mtime;
+    } catch (e) {}
+  }
   res.json({
     success: true,
-    hasCookies: hasCookiesFile(),
-    cookiesPath: COOKIES_FILE
+    hasCookies: exists,
+    cookiesPath: COOKIES_FILE,
+    size,
+    modifiedAt
   });
+});
+
+// POST /api/upload-cookies — Upload or update cookies.txt content
+router.post('/upload-cookies', (req, res) => {
+  try {
+    const { cookies } = req.body;
+    if (!cookies || typeof cookies !== 'string' || cookies.trim().length === 0) {
+      return res.status(400).json({ success: false, error: 'Cookie content is required' });
+    }
+
+    fs.writeFileSync(COOKIES_FILE, cookies.trim(), 'utf8');
+    return res.json({
+      success: true,
+      message: 'cookies.txt successfully configured!',
+      hasCookies: true
+    });
+  } catch (err) {
+    console.error('Failed to save cookies:', err);
+    return res.status(500).json({ success: false, error: 'Failed to write cookies file' });
+  }
+});
+
+// DELETE /api/cookies — Clear cookies.txt
+router.delete('/cookies', (req, res) => {
+  try {
+    if (hasCookiesFile()) {
+      fs.unlinkSync(COOKIES_FILE);
+    }
+    return res.json({
+      success: true,
+      message: 'cookies.txt removed successfully',
+      hasCookies: false
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: 'Failed to remove cookies file' });
+  }
 });
 
 // POST /api/fetch-info

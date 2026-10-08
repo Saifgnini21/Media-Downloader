@@ -20,12 +20,9 @@ function hasCookiesFile() {
  */
 function getAuthArgs(platform) {
   const args = [];
-  // Use cookies file if it exists (required for Instagram, helpful for others)
+  // Use cookies file if it exists (for Instagram authentication or general session)
   if (hasCookiesFile()) {
     args.push('--cookies', COOKIES_FILE);
-  } else if (platform === 'instagram') {
-    // Try to extract cookies from browser as fallback
-    args.push('--cookies-from-browser', 'chrome');
   }
   return args;
 }
@@ -76,6 +73,11 @@ function normalizeFormats(rawFormats, info = {}) {
     }
   }
 
+  // Check if there is a separate audio-only stream (e.g. DASH audio in Instagram / YouTube)
+  const hasSeparateAudioStream = formatsList.some(f => 
+    (f.vcodec === 'none' || !f.vcodec) && ((f.acodec && f.acodec !== 'none') || f.ext === 'm4a' || f.ext === 'mp3' || f.asr)
+  );
+
   // FALLBACK 1: If no standard resolutions were found (Instagram Reels, Pinterest Pins, TikTok, etc.),
   // collect available video formats or height options
   if (formats.length === 0 && videoFormats.length > 0) {
@@ -98,7 +100,8 @@ function normalizeFormats(rawFormats, info = {}) {
       if (seenHeights.has(h)) continue;
       seenHeights.add(h);
 
-      const hasAudio = fmt.acodec && fmt.acodec !== 'none';
+      // Format has audio if it contains an audio codec directly OR if a separate audio stream will be muxed by yt-dlp
+      const hasAudio = (fmt.acodec && fmt.acodec !== 'none') || hasSeparateAudioStream;
       formats.push({
         quality: fmt.height ? `${fmt.height}p` : 'Video',
         formatId: fmt.format_id || 'best',
@@ -149,8 +152,9 @@ function parseYtdlpError(stderr) {
   const errStr = stderr.toLowerCase();
   if (errStr.includes('private video')) return 'This video is private.';
   if (errStr.includes('video unavailable') || errStr.includes('this video is not available')) return 'This video is unavailable in your region or has been removed.';
+  if (errStr.includes('failed to decrypt with dpapi')) return 'Browser cookie decryption failed. Please configure cookies.txt directly on the homepage.';
   if (errStr.includes('sign in to confirm') || errStr.includes('login required')) return 'This content requires authentication. Please set up cookies.';
-  if (errStr.includes('empty media response') || errStr.includes('cookies')) return 'Instagram requires authentication. Please configure cookies (see Settings on the homepage).';
+  if (errStr.includes('empty media response') || errStr.includes('cookies') || errStr.includes('rate-limit reached') || errStr.includes('content is not available')) return 'Instagram requires authentication. Please configure cookies (see Settings on the homepage).';
   if (errStr.includes('no video formats found') || errStr.includes('no formats found')) return 'No downloadable video found on this page. The Pin may contain only an image or is unavailable.';
   if (errStr.includes('no audio stream') || errStr.includes('does not contain audio')) return 'This video does not contain an audio track to extract.';
   if (errStr.includes('http error 429') || errStr.includes('too many requests')) return 'You are being rate limited. Please wait a minute and try again.';
@@ -212,30 +216,38 @@ function getVideoInfo(url, platform = '') {
 
       try {
         const info = JSON.parse(stdoutData);
-        const formats = normalizeFormats(info.formats, info);
+        // Handle playlists or multi-item posts (Instagram carousels / albums)
+        const targetInfo = (Array.isArray(info.entries) && info.entries.length > 0)
+          ? (info.entries.find(e => e && ((e.formats && e.formats.length > 0) || e.vcodec)) || info.entries[0])
+          : info;
+
+        const formats = normalizeFormats(targetInfo.formats, targetInfo);
 
         // Check if there are no video formats found
         const hasVideo = formats.some(f => f.quality !== 'audio');
-        if (!hasVideo && (!info.formats || info.formats.length === 0)) {
-          if (info.thumbnails && info.thumbnails.length > 0) {
+        if (!hasVideo && (!targetInfo.formats || targetInfo.formats.length === 0)) {
+          if (targetInfo.thumbnails && targetInfo.thumbnails.length > 0) {
+            if (platform === 'instagram') {
+              return reject(new Error('This Instagram post contains an image, not a video. Please provide a link to a video or Reel.'));
+            }
             return reject(new Error('This Pinterest pin contains an image, not a video. Please provide a link to a video Pin.'));
           }
           return reject(new Error('No downloadable video found on this page.'));
         }
         
         const normalizedInfo = {
-          id: info.id,
-          title: info.title || 'Untitled',
-          thumbnail: info.thumbnail || info.thumbnails?.[0]?.url || '',
-          duration: info.duration || 0,
-          uploader: info.uploader || info.channel || info.creator || 'Unknown',
-          platform: info.extractor,
+          id: targetInfo.id || info.id,
+          title: targetInfo.title || info.title || 'Untitled',
+          thumbnail: targetInfo.thumbnail || targetInfo.thumbnails?.[0]?.url || info.thumbnail || '',
+          duration: targetInfo.duration || info.duration || 0,
+          uploader: targetInfo.uploader || targetInfo.channel || targetInfo.creator || info.uploader || 'Unknown',
+          platform: info.extractor || targetInfo.extractor,
           formats: formats
         };
 
         resolve(normalizedInfo);
       } catch (err) {
-        if (err.message && (err.message.includes('Pinterest pin contains an image') || err.message.includes('No downloadable video'))) {
+        if (err.message && (err.message.includes('image, not a video') || err.message.includes('No downloadable video'))) {
           reject(err);
         } else {
           reject(new Error('Failed to parse video information from yt-dlp.'));
@@ -262,11 +274,13 @@ function downloadStream(url, formatId, platform = '') {
   
   let formatSpec;
   if (formatId === 'best') {
-    formatSpec = platform === 'pinterest' 
-      ? 'best/bestvideo+bestaudio' 
+    formatSpec = (platform === 'pinterest' || platform === 'instagram')
+      ? 'bestvideo+bestaudio/best' 
       : 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best';
   } else if (platform === 'pinterest') {
     formatSpec = `${formatId}/best`;
+  } else if (platform === 'instagram') {
+    formatSpec = `${formatId}+bestaudio/${formatId}/best`;
   } else {
     formatSpec = `${formatId}+bestaudio/${formatId}`;
   }

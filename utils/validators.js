@@ -9,7 +9,7 @@ function validateUrl(url) {
   }
 
   const youtubeRegex = /^(https?:\/\/)?([a-z0-9-]+\.)?(youtube\.com|youtu\.be)\/.+$/i;
-  const instagramRegex = /^(https?:\/\/)?([a-z0-9-]+\.)?(instagram\.com)\/.+$/i;
+  const instagramRegex = /^(https?:\/\/)?([a-z0-9-]+\.)?(instagram\.com|instagr\.am|ig\.me)\/.+$/i;
   const pinterestRegex = /^(https?:\/\/)?([a-z0-9-]+\.)?(pinterest\.(com|[a-z]{2,3}(\.[a-z]{2})?)|pin\.it|pinimg\.com)\/.+$/i;
   const twitterRegex = /^(https?:\/\/)?([a-z0-9-]+\.)?(twitter\.com|x\.com)\/.+$/i;
   const facebookRegex = /^(https?:\/\/)?([a-z0-9-]+\.)?(facebook\.com|fb\.watch|fb\.gg)\/.+$/i;
@@ -44,6 +44,7 @@ function sanitizeUrl(url) {
     // Remove common tracking params
     parsedUrl.searchParams.delete('si');
     parsedUrl.searchParams.delete('igshid');
+    parsedUrl.searchParams.delete('igsh');
     parsedUrl.searchParams.delete('utm_source');
     parsedUrl.searchParams.delete('utm_medium');
     parsedUrl.searchParams.delete('utm_campaign');
@@ -56,13 +57,13 @@ function sanitizeUrl(url) {
 }
 
 /**
- * Follows redirects for short links (like pin.it, bit.ly, t.co) to retrieve canonical destination URL
+ * Follows redirects for short links (like pin.it, bit.ly, t.co, instagr.am, ig.me) to retrieve canonical destination URL
  * @param {string} url - Input URL
  * @returns {Promise<string>} Resolved canonical URL
  */
 async function resolveRedirectUrl(url) {
   try {
-    if (!/pin\.it|t\.co|bit\.ly|tinyurl\.com/i.test(url)) {
+    if (!/pin\.it|t\.co|bit\.ly|tinyurl\.com|instagr\.am|ig\.me|instagram\.com\/share/i.test(url)) {
       return url;
     }
     let target = url.trim();

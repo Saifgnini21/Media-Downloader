@@ -95,7 +95,7 @@ function detectPlatform(url) {
     if (!url) return null;
     
     if (/(?:https?:\/\/)?(?:[a-z0-9-]+\.)?(?:youtube\.com|youtu\.be)/i.test(url)) return 'YOUTUBE';
-    if (/(?:https?:\/\/)?(?:[a-z0-9-]+\.)?(?:instagram\.com)/i.test(url)) return 'INSTAGRAM';
+    if (/(?:https?:\/\/)?(?:[a-z0-9-]+\.)?(?:instagram\.com|instagr\.am|ig\.me)/i.test(url)) return 'INSTAGRAM';
     if (/(?:https?:\/\/)?(?:[a-z0-9-]+\.)?(?:pinterest\.(?:com|[a-z]{2,3}(?:\.[a-z]{2})?)|pin\.it|pinimg\.com)/i.test(url)) return 'PINTEREST';
     if (/(?:https?:\/\/)?(?:[a-z0-9-]+\.)?(?:twitter\.com|x\.com)/i.test(url)) return 'X';
     if (/(?:https?:\/\/)?(?:[a-z0-9-]+\.)?(?:facebook\.com|fb\.watch|fb\.gg)/i.test(url)) return 'FACEBOOK';
@@ -429,7 +429,7 @@ elements.urlInput.addEventListener('keydown', (e) => {
     }
 });
 
-// --- Cookies Status Check ---
+// --- Cookies Status Check & File Upload ---
 
 async function checkCookiesStatus() {
     if (!elements.cookiesStatus) return;
@@ -437,13 +437,45 @@ async function checkCookiesStatus() {
         const res = await fetch('/api/cookies-status');
         const data = await res.json();
         if (data.hasCookies) {
-            elements.cookiesStatus.innerHTML = `<span class="text-emerald-400">✓ cookies.txt detected! Instagram downloads active.</span>`;
+            elements.cookiesStatus.innerHTML = `<span class="text-emerald-400">✓ cookies.txt detected! Instagram authentication enabled.</span>`;
         } else {
-            elements.cookiesStatus.innerHTML = `<span class="text-amber-400">⚠️ No cookies.txt found at project root.</span>`;
+            elements.cookiesStatus.innerHTML = `<span class="text-amber-400">⚠️ Optional: No cookies.txt found. Public Reels download directly, but cookies are needed for private/restricted content.</span>`;
         }
     } catch (e) {
         elements.cookiesStatus.innerHTML = '';
     }
+}
+
+const cookieUploadInput = document.getElementById('cookie-file-upload');
+if (cookieUploadInput) {
+    cookieUploadInput.addEventListener('change', async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const uploadStatus = document.getElementById('cookie-upload-status');
+        if (uploadStatus) uploadStatus.textContent = 'Uploading...';
+        try {
+            const content = await file.text();
+            const res = await fetch('/api/upload-cookies', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cookies: content })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast('cookies.txt uploaded successfully!', 'success');
+                if (uploadStatus) uploadStatus.textContent = '✓ Saved!';
+                await checkCookiesStatus();
+                if (state.currentUrl && state.platform === 'INSTAGRAM') {
+                    fetchVideoInfo();
+                }
+            } else {
+                throw new Error(data.error || 'Failed to save cookies.');
+            }
+        } catch (err) {
+            showToast(err.message, 'error');
+            if (uploadStatus) uploadStatus.textContent = 'Upload failed';
+        }
+    });
 }
 
 // --- Initial State ---

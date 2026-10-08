@@ -40,13 +40,25 @@ const server = app.listen(0, async () => {
     const jsRes = await fetch(`${baseUrl}/js/app.js`);
     assert(jsRes.status === 200, 'GET /js/app.js returns HTTP 200');
 
-    // 2. Cookies Status Endpoint
-    console.log('\n[SPEC 8] API: Cookies Status (/api/cookies-status):');
+    // 2. Cookies Status & Upload Endpoints
+    console.log('\n[SPEC 8] API: Cookies Status & Management (/api/cookies-status, /api/upload-cookies):');
     const cookiesRes = await fetch(`${baseUrl}/api/cookies-status`);
     assert(cookiesRes.status === 200, 'GET /api/cookies-status returns HTTP 200');
     const cookiesData = await cookiesRes.json();
     assert(cookiesData.success === true, 'Cookies response success is true');
     assert(typeof cookiesData.hasCookies === 'boolean', 'Cookies status hasCookies is boolean');
+
+    const uploadCookieRes = await fetch(`${baseUrl}/api/upload-cookies`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cookies: '# Netscape HTTP Cookie File\n.instagram.com\tTRUE\t/\tTRUE\t1893456000\tsessionid\ttest_session' })
+    });
+    assert(uploadCookieRes.status === 200, 'POST /api/upload-cookies returns HTTP 200');
+    const uploadData = await uploadCookieRes.json();
+    assert(uploadData.hasCookies === true, 'Cookies uploaded successfully');
+
+    const deleteCookieRes = await fetch(`${baseUrl}/api/cookies`, { method: 'DELETE' });
+    assert(deleteCookieRes.status === 200, 'DELETE /api/cookies returns HTTP 200');
 
     // 3. Fetch Info Validation
     console.log('\n[SPEC 9] API: Fetch Info Validation (/api/fetch-info):');
@@ -104,6 +116,32 @@ const server = app.listen(0, async () => {
     const vChunk = await vReader.read();
     assert(vChunk.value && vChunk.value.length > 0, `Video stream successfully emits bytes (${vChunk.value.length} bytes in first chunk)`);
     abortCtrl.abort();
+
+    // 7. Live Instagram Metadata Extraction & Streaming
+    console.log('\n[SPEC 13] API: Live Instagram Metadata & Streaming:');
+    const igTestUrl = 'https://www.instagram.com/reel/DRVBXWtDtJb/';
+    const igFetchRes = await fetch(`${baseUrl}/api/fetch-info`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: igTestUrl })
+    });
+    assert(igFetchRes.status === 200, 'Live Instagram fetch returns HTTP 200');
+    const igData = await igFetchRes.json();
+    assert(igData.success === true, 'Instagram fetch success is true');
+    assert(igData.data && igData.data.detectedPlatform === 'instagram', 'Detected platform is instagram');
+    assert(Array.isArray(igData.data && igData.data.formats) && igData.data.formats.length > 0, 'Instagram video formats populated');
+    const igHasAudio = igData.data && igData.data.formats && igData.data.formats.some(f => f.hasAudio === true && f.quality !== 'audio');
+    assert(igHasAudio, 'Instagram formats correctly identified as having audio');
+
+    const igAbortCtrl = new AbortController();
+    const igDlUrl = `${baseUrl}/api/download?url=${encodeURIComponent(igTestUrl)}&formatId=best&title=test_instagram_video`;
+    const igDlRes = await fetch(igDlUrl, { signal: igAbortCtrl.signal });
+    assert(igDlRes.status === 200, 'Instagram video download returns HTTP 200');
+    assert(igDlRes.headers.get('content-type') === 'video/mp4', 'Instagram Video Content-Type is video/mp4');
+    const igReader = igDlRes.body.getReader();
+    const igChunk = await igReader.read();
+    assert(igChunk.value && igChunk.value.length > 0, `Instagram video stream emits bytes (${igChunk.value.length} bytes in first chunk)`);
+    igAbortCtrl.abort();
 
     console.log('\n====================================================');
     console.log(`TOTAL API SPECS: ${totalTests} | PASSED: ${passedTests} | FAILED: ${totalTests - passedTests}`);
