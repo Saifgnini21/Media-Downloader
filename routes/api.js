@@ -95,11 +95,12 @@ router.post('/system/update', async (req, res) => {
 // POST /api/fetch-info
 router.post('/fetch-info', fetchInfoLimiter, async (req, res) => {
   try {
-    const { url } = req.body;
+    let { url } = req.body;
     
-    if (!url) {
+    if (!url || typeof url !== 'string' || url.trim().length === 0) {
       return res.status(400).json({ success: false, error: 'URL is required' });
     }
+    url = url.trim();
 
     const { valid, platform } = validateUrl(url);
     if (!valid) {
@@ -123,7 +124,7 @@ router.post('/fetch-info', fetchInfoLimiter, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Fetch info error:', error.message);
+    console.error(`Fetch info error for [${req.body && req.body.url}]:`, error.message);
     return res.status(500).json({ success: false, error: error.message || 'Internal server error' });
   }
 });

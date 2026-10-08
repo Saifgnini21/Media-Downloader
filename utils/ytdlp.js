@@ -24,6 +24,12 @@ function getAuthArgs(platform) {
   if (hasCookiesFile()) {
     args.push('--cookies', COOKIES_FILE);
   }
+  // Bypass YouTube bot/PO token challenges using android+web player client API
+  if (platform === 'youtube' || !platform) {
+    args.push('--extractor-args', 'youtube:player_client=android,web');
+  }
+  // Standard modern browser user-agent to avoid blocking
+  args.push('--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36');
   return args;
 }
 
@@ -226,22 +232,41 @@ function normalizeFormats(rawFormats, info = {}) {
  * @returns {string} 
  */
 function parseYtdlpError(stderr) {
-  const errStr = stderr.toLowerCase();
+  const errStr = (stderr || '').toLowerCase();
   if (errStr.includes('private video')) return 'This video is private.';
   if (errStr.includes('video unavailable') || errStr.includes('this video is not available')) return 'This video is unavailable in your region or has been removed.';
   if (errStr.includes('failed to decrypt with dpapi')) return 'Browser cookie decryption failed. Please configure cookies.txt directly on the homepage.';
   if (errStr.includes('sign in to confirm') || errStr.includes('login required')) return 'This content requires authentication. Please set up cookies.';
-  if (errStr.includes('empty media response') || errStr.includes('cookies') || errStr.includes('rate-limit reached') || errStr.includes('content is not available')) return 'Instagram requires authentication. Please configure cookies (see Settings on the homepage).';
+  if (errStr.includes('checkpoint_required') || errStr.includes('challenge_required') || errStr.includes('feedback_required')) return 'Instagram security checkpoint triggered. Please configure cookies (see Settings on the homepage).';
+  if (errStr.includes('empty media response') || errStr.includes('rate-limit reached') || errStr.includes('content is not available')) return 'Instagram requires authentication. Please configure cookies (see Settings on the homepage).';
   if (errStr.includes('no video formats found') || errStr.includes('no formats found')) return 'No downloadable video found on this page. The Pin may contain only an image or is unavailable.';
+  if (errStr.includes('requested format is not available')) return 'The requested video format is not available for this media.';
   if (errStr.includes('no audio stream') || errStr.includes('does not contain audio')) return 'This video does not contain an audio track to extract.';
   if (errStr.includes('http error 429') || errStr.includes('too many requests')) return 'You are being rate limited. Please wait a minute and try again.';
   if (errStr.includes('http error 404') || errStr.includes('not found')) return 'Content not found. Please check the URL is correct.';
   if (errStr.includes('unsupported url')) return 'This URL is not supported. Please use a direct video link.';
   if (errStr.includes('http error 403')) return 'Access denied by the platform. Try again later.';
-  if (errStr.includes('is not a valid url')) return 'Invalid URL format. Please paste a valid video link.';
+  if (errStr.includes('is not a valid url') || errStr.includes('invalid url')) return 'Invalid URL format. Please paste a valid video link.';
+  if (errStr.includes('is a playlist') || (errStr.includes('playlist') && errStr.includes('use --yes-playlist'))) return 'This URL points to a playlist. Please provide a link to an individual video.';
+  if (errStr.includes('it\'s a channel') || errStr.includes('user profile') || errStr.includes('it\'s a user')) return 'This URL points to a profile or channel page. Please provide a direct video link.';
+  if (errStr.includes('members-only') || errStr.includes('subscribers-only')) return 'This video is restricted to channel members or subscribers.';
+  if (errStr.includes('premieres in') || errStr.includes('live event will begin')) return 'This video has not premiered yet.';
+  if (errStr.includes('removed by the uploader') || errStr.includes('copyright claim')) return 'This video has been removed by the uploader or due to copyright.';
+  if (errStr.includes('only images are available')) return 'This post contains only images, not a downloadable video.';
   if (errStr.includes('geo') || errStr.includes('not available in your country')) return 'This content is geo-restricted and not available in your country.';
   if (errStr.includes('age') || errStr.includes('age-restricted')) return 'This content is age-restricted and requires account authentication.';
   if (errStr.includes('network') || errStr.includes('connection') || errStr.includes('timeout')) return 'Network error. Please check your internet connection and try again.';
+
+  // Extract clean message from yt-dlp "ERROR: [extractor] id: Message" or "ERROR: Message"
+  const errorMatch = (stderr || '').match(/ERROR:\s*(?:\[[^\]]+\]\s*)?(?:[^\s:]+:\s*)?([^\r\n]+)/i);
+  if (errorMatch && errorMatch[1]) {
+    const rawMsg = errorMatch[1].trim();
+    const cleanMsg = rawMsg.replace(/https?:\/\/[^\s]+/g, '').replace(/use --[^\s]+/gi, '').trim();
+    if (cleanMsg.length > 5 && !cleanMsg.toLowerCase().includes('failed to parse')) {
+      return cleanMsg;
+    }
+  }
+
   return 'Failed to fetch video information. Please verify the URL is a valid public video link.';
 }
 
@@ -287,6 +312,7 @@ function getVideoInfo(url, platform = '') {
       clearTimeout(timeout);
       
       if (code !== 0) {
+        console.error(`[yt-dlp stderr exit code ${code}]:`, (stderrData || '').trim());
         const errorMsg = parseYtdlpError(stderrData);
         return reject(new Error(errorMsg));
       }

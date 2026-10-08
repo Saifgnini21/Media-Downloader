@@ -8,6 +8,8 @@ function validateUrl(url) {
     return { valid: false, platform: null };
   }
 
+  const cleanUrl = url.trim();
+
   const youtubeRegex = /^(https?:\/\/)?([a-z0-9-]+\.)?(youtube\.com|youtu\.be)\/.+$/i;
   const instagramRegex = /^(https?:\/\/)?([a-z0-9-]+\.)?(instagram\.com|instagr\.am|ig\.me)\/.+$/i;
   const pinterestRegex = /^(https?:\/\/)?([a-z0-9-]+\.)?(pinterest\.(com|[a-z]{2,3}(\.[a-z]{2})?)|pin\.it|pinimg\.com)\/.+$/i;
@@ -17,14 +19,14 @@ function validateUrl(url) {
   const tiktokRegex = /^(https?:\/\/)?([a-z0-9-]+\.)?(tiktok\.com)\/.+$/i;
   const snapchatRegex = /^(https?:\/\/)?([a-z0-9-]+\.)?(snapchat\.com)\/.+$/i;
 
-  if (youtubeRegex.test(url)) return { valid: true, platform: 'youtube' };
-  if (instagramRegex.test(url)) return { valid: true, platform: 'instagram' };
-  if (pinterestRegex.test(url)) return { valid: true, platform: 'pinterest' };
-  if (twitterRegex.test(url)) return { valid: true, platform: 'x' };
-  if (facebookRegex.test(url)) return { valid: true, platform: 'facebook' };
-  if (linkedinRegex.test(url)) return { valid: true, platform: 'linkedin' };
-  if (tiktokRegex.test(url)) return { valid: true, platform: 'tiktok' };
-  if (snapchatRegex.test(url)) return { valid: true, platform: 'snapchat' };
+  if (youtubeRegex.test(cleanUrl)) return { valid: true, platform: 'youtube' };
+  if (instagramRegex.test(cleanUrl)) return { valid: true, platform: 'instagram' };
+  if (pinterestRegex.test(cleanUrl)) return { valid: true, platform: 'pinterest' };
+  if (twitterRegex.test(cleanUrl)) return { valid: true, platform: 'x' };
+  if (facebookRegex.test(cleanUrl)) return { valid: true, platform: 'facebook' };
+  if (linkedinRegex.test(cleanUrl)) return { valid: true, platform: 'linkedin' };
+  if (tiktokRegex.test(cleanUrl)) return { valid: true, platform: 'tiktok' };
+  if (snapchatRegex.test(cleanUrl)) return { valid: true, platform: 'snapchat' };
 
   return { valid: false, platform: null };
 }
@@ -36,7 +38,7 @@ function validateUrl(url) {
  */
 function sanitizeUrl(url) {
   try {
-    let sanitized = url.trim();
+    let sanitized = (url || '').trim();
     if (!/^https?:\/\//i.test(sanitized)) {
       sanitized = 'https://' + sanitized;
     }
