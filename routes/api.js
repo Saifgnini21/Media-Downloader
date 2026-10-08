@@ -5,6 +5,7 @@ const fs = require('fs');
 const { validateUrl, sanitizeUrl, resolveRedirectUrl } = require('../utils/validators');
 const { getPlatformConfig } = require('../utils/platforms');
 const { getVideoInfo, downloadStream, downloadAudio, hasCookiesFile, COOKIES_FILE } = require('../utils/ytdlp');
+const { getSystemHealth, autoUpdateYtdlp } = require('../utils/systemDiagnostics');
 
 const router = express.Router();
 
@@ -77,6 +78,18 @@ router.delete('/cookies', (req, res) => {
   } catch (err) {
     return res.status(500).json({ success: false, error: 'Failed to remove cookies file' });
   }
+});
+
+// GET /api/system/health — System diagnostics (yt-dlp version, ffmpeg, cookies status)
+router.get('/system/health', async (req, res) => {
+  const health = await getSystemHealth();
+  res.json({ success: true, health });
+});
+
+// POST /api/system/update — Trigger auto-update of yt-dlp
+router.post('/system/update', async (req, res) => {
+  const result = await autoUpdateYtdlp();
+  res.json({ success: result.success, message: result.output });
 });
 
 // POST /api/fetch-info

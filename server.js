@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
 const apiRoutes = require('./routes/api');
+const { getSystemHealth, scheduleAutoUpdate } = require('./utils/systemDiagnostics');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -34,8 +35,19 @@ app.use('/api', apiRoutes);
 
 // Start server if run directly
 if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+  app.listen(PORT, async () => {
+    console.log(`===============================================`);
+    console.log(`SaveMedia Server is running on port ${PORT}`);
+    const health = await getSystemHealth();
+    console.log(`yt-dlp version: ${health.ytdlp.version}`);
+    console.log(`ffmpeg: ${health.ffmpeg.installed ? 'Available' : 'Missing'}`);
+    console.log(`Cookies configured: ${health.cookies.configured ? 'Yes' : 'No'}`);
+    console.log(`Platforms supported: ${health.platformsSupported}`);
+    console.log(`===============================================`);
+
+    // Check for updates in the background (runs once every 24h)
+    scheduleAutoUpdate();
+    setInterval(scheduleAutoUpdate, 24 * 60 * 60 * 1000);
   });
 }
 

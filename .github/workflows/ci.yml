@@ -5,6 +5,9 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  schedule:
+    # Automatically runs every Monday at 06:00 UTC to verify social media platforms compatibility
+    - cron: '0 6 * * 1'
 
 jobs:
   test:
