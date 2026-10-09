@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: media-downloader
+    runtime: docker
+    plan: free
+    region: frankfurt
+    healthCheckPath: /api/cookies-status
+    envVars:
+      - key: NODE_ENV
+        value: production

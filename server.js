@@ -47,7 +47,7 @@ app.use((req, res, next) => {
 
 // Start server if run directly
 if (require.main === module) {
-  app.listen(PORT, async () => {
+  app.listen(PORT, '0.0.0.0', async () => {
     console.log(`===============================================`);
     console.log(`SaveMedia Server is running on port ${PORT}`);
     let health = await getSystemHealth();
