@@ -33,6 +33,15 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Mount API routes
 app.use('/api', apiRoutes);
 
+// Fallback direct mounting for serverless environments (e.g. Vercel) if prefix is stripped
+app.use((req, res, next) => {
+  const apiEndpoints = ['/fetch-info', '/download', '/cookies-status', '/upload-cookies', '/system'];
+  if (apiEndpoints.some(ep => req.path.startsWith(ep))) {
+    return apiRoutes(req, res, next);
+  }
+  next();
+});
+
 // Start server if run directly
 if (require.main === module) {
   app.listen(PORT, async () => {

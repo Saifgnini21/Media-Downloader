@@ -1,9 +1,19 @@
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
 // Path to optional cookies file for Instagram authentication
-const COOKIES_FILE = path.join(__dirname, '..', 'cookies.txt');
+// In serverless environments (e.g. Vercel), app root is read-only, so fallback to /tmp
+const COOKIES_FILE = process.env.COOKIES_PATH || 
+  (process.env.VERCEL ? path.join(os.tmpdir(), 'cookies.txt') : path.join(__dirname, '..', 'cookies.txt'));
+
+// Auto-seed cookies from environment variable if provided (common in Vercel project settings)
+if (process.env.COOKIES_CONTENT && !fs.existsSync(COOKIES_FILE)) {
+  try {
+    fs.writeFileSync(COOKIES_FILE, process.env.COOKIES_CONTENT.trim(), 'utf8');
+  } catch (e) {}
+}
 
 /**
  * Check if a cookies file exists for authenticated requests
@@ -36,17 +46,45 @@ function getAuthArgs(platform) {
 /**
  * Resolves the best available yt-dlp executable path and any required argument prefixes.
  * Priority:
- * 1. Local standalone binary in project root (bin/yt-dlp.exe or bin/yt-dlp)
- * 2. Explicit environment variable YTDLP_PATH
- * 3. Standard Windows Python installation directories (Python installations Scripts yt-dlp.exe)
- * 4. System PATH 'yt-dlp'
+ * 1. Temporary directory standalone binary (e.g. Lambda / Vercel /tmp/yt-dlp)
+ * 2. Local standalone binary in project root (bin/yt-dlp.exe or bin/yt-dlp)
+ * 3. Explicit environment variable YTDLP_PATH
+ * 4. Standard Windows Python installation directories (Python installations Scripts yt-dlp.exe)
+ * 5. System PATH 'yt-dlp'
  * @returns {{ command: string, argsPrefix: string[] }}
  */
 function getYtdlpExecution() {
-  // 1. Local standalone binary (completely independent of PATH and Python)
   const binaryName = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp';
+  const tmpBinary = path.join(os.tmpdir(), binaryName);
   const localBinary = path.join(__dirname, '..', 'bin', binaryName);
+
+  // 1. Temporary directory standalone binary (common in Lambda/Vercel)
+  if (fs.existsSync(tmpBinary)) {
+    try {
+      if (process.platform !== 'win32') {
+        fs.chmodSync(tmpBinary, 0o755);
+      }
+      return { command: tmpBinary, argsPrefix: [] };
+    } catch (e) {}
+  }
+
+  // 2. Local standalone binary (completely independent of PATH and Python)
   if (fs.existsSync(localBinary)) {
+    if (process.platform !== 'win32') {
+      try {
+        fs.accessSync(localBinary, fs.constants.X_OK);
+        return { command: localBinary, argsPrefix: [] };
+      } catch (accessErr) {
+        // In read-only serverless environment, copy to /tmp and set execute permission
+        try {
+          fs.copyFileSync(localBinary, tmpBinary);
+          fs.chmodSync(tmpBinary, 0o755);
+          return { command: tmpBinary, argsPrefix: [] };
+        } catch (copyErr) {
+          return { command: localBinary, argsPrefix: [] };
+        }
+      }
+    }
     return { command: localBinary, argsPrefix: [] };
   }
 

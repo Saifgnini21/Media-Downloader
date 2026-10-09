@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const https = require('https');
 const { execFileSync } = require('child_process');
 
@@ -40,31 +41,51 @@ function downloadFile(url, dest) {
   });
 }
 
-async function ensureYtdlp() {
-  if (!fs.existsSync(BIN_DIR)) {
-    fs.mkdirSync(BIN_DIR, { recursive: true });
+async function ensureYtdlp(destPath = null) {
+  let target = destPath || TARGET_PATH;
+
+  // Determine writable directory
+  try {
+    const targetDir = path.dirname(target);
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+  } catch (e) {
+    // Read-only filesystem (e.g. AWS Lambda / Vercel runtime)
+    target = path.join(os.tmpdir(), BINARY_NAME);
   }
 
-  if (fs.existsSync(TARGET_PATH)) {
+  if (fs.existsSync(target)) {
     try {
-      const ver = execFileSync(TARGET_PATH, ['--version']).toString().trim();
-      console.log(`[yt-dlp] Local standalone binary verified at ${TARGET_PATH} (v${ver})`);
-      return TARGET_PATH;
+      const ver = execFileSync(target, ['--version']).toString().trim();
+      console.log(`[yt-dlp] Local standalone binary verified at ${target} (v${ver})`);
+      return target;
     } catch (e) {
-      console.warn(`[yt-dlp] Existing binary at ${TARGET_PATH} failed execution test, re-downloading...`);
+      console.warn(`[yt-dlp] Existing binary at ${target} failed execution test, re-downloading...`);
     }
   }
 
-  console.log(`[yt-dlp] Downloading official standalone yt-dlp binary...`);
+  console.log(`[yt-dlp] Downloading official standalone yt-dlp binary to ${target}...`);
   const url = getDownloadUrl();
-  await downloadFile(url, TARGET_PATH);
-  if (!IS_WIN) {
-    fs.chmodSync(TARGET_PATH, 0o755);
+  try {
+    await downloadFile(url, target);
+  } catch (err) {
+    // If target was in project dir and failed (e.g. read-only), retry in os.tmpdir()
+    if (target !== path.join(os.tmpdir(), BINARY_NAME)) {
+      target = path.join(os.tmpdir(), BINARY_NAME);
+      await downloadFile(url, target);
+    } else {
+      throw err;
+    }
   }
 
-  const ver = execFileSync(TARGET_PATH, ['--version']).toString().trim();
-  console.log(`[yt-dlp] Successfully installed yt-dlp v${ver} to ${TARGET_PATH}`);
-  return TARGET_PATH;
+  if (!IS_WIN) {
+    fs.chmodSync(target, 0o755);
+  }
+
+  const ver = execFileSync(target, ['--version']).toString().trim();
+  console.log(`[yt-dlp] Successfully installed yt-dlp v${ver} to ${target}`);
+  return target;
 }
 
 if (require.main === module) {
