@@ -207,7 +207,14 @@ elements.urlInput.addEventListener('paste', (e) => {
 elements.fetchBtn.addEventListener('click', fetchVideoInfo);
 
 async function fetchVideoInfo() {
-    if (!state.currentUrl || !state.platform) return;
+    if (!state.currentUrl) {
+        state.currentUrl = (elements.urlInput.value || '').trim();
+    }
+    if (!state.currentUrl) return;
+    
+    if (!state.platform) {
+        state.platform = detectPlatform(state.currentUrl);
+    }
     
     setLoadingState(true);
     elements.previewContainer.classList.add('hidden');
@@ -219,7 +226,12 @@ async function fetchVideoInfo() {
             body: JSON.stringify({ url: state.currentUrl })
         });
         
-        const result = await response.json();
+        let result;
+        try {
+            result = await response.json();
+        } catch (e) {
+            throw new Error('Server returned an unexpected response. Please check server logs.');
+        }
         
         if (!response.ok || !result.success) {
             throw new Error(result.error || 'Failed to fetch video information.');
@@ -227,6 +239,10 @@ async function fetchVideoInfo() {
         
         // Normalize the API response to match our rendering expectations
         const data = result.data;
+        if (data.detectedPlatform && !state.platform) {
+            state.platform = data.detectedPlatform.toUpperCase();
+        }
+
         state.videoInfo = {
             title: data.title,
             uploader: data.uploader || 'Unknown',
@@ -246,7 +262,10 @@ async function fetchVideoInfo() {
         if (elements.instagramHelp) elements.instagramHelp.classList.add('hidden');
         
     } catch (error) {
-        const errMsg = error.message || 'Failed to fetch video information.';
+        let errMsg = error.message || 'Failed to fetch video information.';
+        if (errMsg === 'Failed to fetch' || errMsg.includes('NetworkError')) {
+            errMsg = 'Unable to connect to server. Please ensure the local server is running at http://localhost:3000.';
+        }
         showToast(errMsg, 'error');
         // Show Instagram auth help only if the error is auth-related and platform is Instagram
         if (state.platform === 'INSTAGRAM' && elements.instagramHelp &&

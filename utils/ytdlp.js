@@ -231,8 +231,9 @@ function normalizeFormats(rawFormats, info = {}) {
  * @param {string} stderr 
  * @returns {string} 
  */
-function parseYtdlpError(stderr) {
-  const errStr = (stderr || '').toLowerCase();
+function parseYtdlpError(stderr, stdout = '') {
+  const combined = `${stderr || ''}\n${stdout || ''}`;
+  const errStr = combined.toLowerCase();
   if (errStr.includes('private video')) return 'This video is private.';
   if (errStr.includes('video unavailable') || errStr.includes('this video is not available')) return 'This video is unavailable in your region or has been removed.';
   if (errStr.includes('failed to decrypt with dpapi')) return 'Browser cookie decryption failed. Please configure cookies.txt directly on the homepage.';
@@ -248,7 +249,7 @@ function parseYtdlpError(stderr) {
   if (errStr.includes('http error 403')) return 'Access denied by the platform. Try again later.';
   if (errStr.includes('is not a valid url') || errStr.includes('invalid url')) return 'Invalid URL format. Please paste a valid video link.';
   if (errStr.includes('is a playlist') || (errStr.includes('playlist') && errStr.includes('use --yes-playlist'))) return 'This URL points to a playlist. Please provide a link to an individual video.';
-  if (errStr.includes('it\'s a channel') || errStr.includes('user profile') || errStr.includes('it\'s a user')) return 'This URL points to a profile or channel page. Please provide a direct video link.';
+  if (errStr.includes('it\'s a channel') || errStr.includes('user profile') || errStr.includes('it\'s a user') || errStr.includes('channel_id')) return 'This URL points to a profile or channel page. Please provide a direct video link.';
   if (errStr.includes('members-only') || errStr.includes('subscribers-only')) return 'This video is restricted to channel members or subscribers.';
   if (errStr.includes('premieres in') || errStr.includes('live event will begin')) return 'This video has not premiered yet.';
   if (errStr.includes('removed by the uploader') || errStr.includes('copyright claim')) return 'This video has been removed by the uploader or due to copyright.';
@@ -257,13 +258,34 @@ function parseYtdlpError(stderr) {
   if (errStr.includes('age') || errStr.includes('age-restricted')) return 'This content is age-restricted and requires account authentication.';
   if (errStr.includes('network') || errStr.includes('connection') || errStr.includes('timeout')) return 'Network error. Please check your internet connection and try again.';
 
-  // Extract clean message from yt-dlp "ERROR: [extractor] id: Message" or "ERROR: Message"
-  const errorMatch = (stderr || '').match(/ERROR:\s*(?:\[[^\]]+\]\s*)?(?:[^\s:]+:\s*)?([^\r\n]+)/i);
-  if (errorMatch && errorMatch[1]) {
-    const rawMsg = errorMatch[1].trim();
-    const cleanMsg = rawMsg.replace(/https?:\/\/[^\s]+/g, '').replace(/use --[^\s]+/gi, '').trim();
-    if (cleanMsg.length > 5 && !cleanMsg.toLowerCase().includes('failed to parse')) {
-      return cleanMsg;
+  // Comprehensive multi-line error extraction:
+  const lines = combined.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  
+  // 1. Look for explicit ERROR: or error: line
+  for (const line of lines) {
+    const errorMatch = line.match(/(?:ERROR|error):\s*(?:\[[^\]]+\]\s*)?(?:[^\s:]+:\s*)?([^\r\n]+)/i);
+    if (errorMatch && errorMatch[1]) {
+      const clean = errorMatch[1].replace(/https?:\/\/[^\s]+/g, '').replace(/use --[^\s]+/gi, '').trim();
+      if (clean.length > 5 && !clean.toLowerCase().includes('failed to parse')) {
+        return clean;
+      }
+    }
+  }
+
+  // 2. Look for Python exception / ExtractorError lines
+  for (const line of lines) {
+    const match = line.match(/^(?:[A-Za-z]+Error|Exception):\s*(.+)/i);
+    if (match && match[1]) {
+      const clean = match[1].replace(/https?:\/\/[^\s]+/g, '').trim();
+      if (clean.length > 5) return clean;
+    }
+  }
+
+  // 3. Look for descriptive lines with failure keywords
+  for (const line of lines) {
+    if (/(?:unable to|failed to|not found|forbidden|unsupported|unavailable|restricted|checkpoint|challenge)/i.test(line)) {
+      const clean = line.replace(/https?:\/\/[^\s]+/g, '').replace(/^\[[^\]]+\]\s*/, '').trim();
+      if (clean.length > 5) return clean;
     }
   }
 
@@ -313,7 +335,7 @@ function getVideoInfo(url, platform = '') {
       
       if (code !== 0) {
         console.error(`[yt-dlp stderr exit code ${code}]:`, (stderrData || '').trim());
-        const errorMsg = parseYtdlpError(stderrData);
+        const errorMsg = parseYtdlpError(stderrData, stdoutData);
         return reject(new Error(errorMsg));
       }
 
