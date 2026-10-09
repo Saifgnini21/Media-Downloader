@@ -8,6 +8,9 @@ const { getSystemHealth, scheduleAutoUpdate } = require('./utils/systemDiagnosti
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust reverse proxy headers (Vercel, Render, Cloudflare)
+app.set('trust proxy', 1);
+
 // Middleware setup — Configured to support Ad Networks (Monetag, PropellerAds, Adsterra)
 app.use(helmet({
   contentSecurityPolicy: {

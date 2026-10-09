@@ -26,20 +26,31 @@ function hasCookiesFile() {
 /**
  * Get common yt-dlp args (cookies, etc.)
  * @param {string} platform - The platform name (youtube, instagram, pinterest)
+ * @param {boolean} [isRetry=false] - Whether this is a retry attempt
  * @returns {string[]} Additional args
  */
-function getAuthArgs(platform) {
+function getAuthArgs(platform, isRetry = false) {
   const args = [];
   // Use cookies file if it exists (for Instagram authentication or general session)
   if (hasCookiesFile()) {
     args.push('--cookies', COOKIES_FILE);
   }
-  // Bypass YouTube bot/PO token challenges using android+web player client API
+  // Bypass YouTube bot/PO token challenges and datacenter 429 rate limits
   if (platform === 'youtube' || !platform) {
-    args.push('--extractor-args', 'youtube:player_client=android,web');
+    if (isRetry) {
+      args.push('--extractor-args', 'youtube:player_client=ios');
+    } else {
+      args.push('--extractor-args', 'youtube:player_client=ios,android,mweb');
+    }
   }
   // Standard modern browser user-agent to avoid blocking
   args.push('--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36');
+
+  // Proxy support: HTTP/HTTPS/SOCKS proxy via environment variable
+  const proxy = process.env.PROXY || process.env.HTTP_PROXY || process.env.HTTPS_PROXY;
+  if (proxy) {
+    args.push('--proxy', proxy);
+  }
   return args;
 }
 
@@ -336,9 +347,10 @@ function parseYtdlpError(stderr, stdout = '') {
  * @param {string} platform - The detected platform name
  * @returns {Promise<object>} Video info
  */
-function getVideoInfo(url, platform = '') {
+function getVideoInfo(url, platform = '', retryCount = 0) {
   return new Promise((resolve, reject) => {
-    const authArgs = getAuthArgs(platform);
+    const isRetry = retryCount > 0;
+    const authArgs = getAuthArgs(platform, isRetry);
     const args = [
       '--dump-json',
       '--no-warnings',
@@ -373,6 +385,12 @@ function getVideoInfo(url, platform = '') {
       
       if (code !== 0) {
         console.error(`[yt-dlp stderr exit code ${code}]:`, (stderrData || '').trim());
+        const combined = `${stderrData}\n${stdoutData}`.toLowerCase();
+        const isRateLimited = combined.includes('429') || combined.includes('too many requests');
+        if (isRateLimited && retryCount < 1 && (platform === 'youtube' || !platform)) {
+          console.log('[yt-dlp] Rate limit encountered, retrying with iOS client...');
+          return getVideoInfo(url, platform, retryCount + 1).then(resolve).catch(reject);
+        }
         const errorMsg = parseYtdlpError(stderrData, stdoutData);
         return reject(new Error(errorMsg));
       }

@@ -9,17 +9,21 @@ const { getSystemHealth, autoUpdateYtdlp } = require('../utils/systemDiagnostics
 
 const router = express.Router();
 
-// Rate limiter: 10 requests per minute per IP for fetch-info
+// Rate limiter: 30 requests per minute per IP for fetch-info
 const fetchInfoLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
-  max: 10,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
   message: { success: false, error: 'Too many requests, please try again later.' }
 });
 
-// Rate limiter: 5 requests per minute per IP for download
+// Rate limiter: 15 requests per minute per IP for download
 const downloadLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
-  max: 5,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
   message: { success: false, error: 'Too many downloads, please try again later.' }
 });
 
